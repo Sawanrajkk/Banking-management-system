@@ -5,6 +5,7 @@
 #include <iostream>
 #include <fstream>
 #include <cctype>
+#include <mysql/mysql.h> //to connect the database to the c++
 #include <iomanip>
 using namespace std;
 
