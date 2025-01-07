@@ -1,0 +1,161 @@
+#include <iostream>
+#include <iomanip>
+#include <mysql/mysql.h>
+#include <cstring>
+
+using namespace std;
+
+class account {
+    int acno;
+    char name[50];
+    int deposit;
+    char type;
+
+public:
+    void create_account();
+    void show_account() const;
+    void modify();
+    int retacno() const { return acno; }
+    int retdeposit() const { return deposit; }
+    char rettype() const { return type; }
+};
+
+void account::create_account() {
+    cout << "\nEnter The account No. (8 digits): ";
+    cin >> acno;
+    cout << "\nEnter The Name of The account Holder : ";
+    cin.ignore();
+    cin.getline(name, 50);
+    cout << "\nEnter Type of The account (C/S) : ";
+    cin >> type;
+    type = toupper(type);
+    cout << "\nEnter The Initial amount(>=500 for Saving and >=1000 for Current) : ";
+    cin >> deposit;
+    cout << "\n\nAccount Created..";
+}
+
+void account::show_account() const {
+    cout << "\nAccount No. : " << acno;
+    cout << "\nAccount Holder Name : " << name;
+    cout << "\nType of Account : " << type;
+    cout << "\nBalance amount : " << deposit;
+}
+
+// Function Prototypes
+void write_account(MYSQL*);
+void display_all(MYSQL*);
+void modify_account(MYSQL*, int);
+void delete_account(MYSQL*, int);
+void deposit_withdraw(MYSQL*, int, int);
+void intro();
+
+// Main Function
+int main() {
+    MYSQL* conn = mysql_init(nullptr);
+    if (!conn) {
+        cout << "MySQL initialization failed!" << endl;
+        return 1;
+    }
+
+    // Connect to the database
+    if (!mysql_real_connect(conn, "localhost", "root", "password", "BankDB", 3306, nullptr, 0)) {
+        cout << "Connection failed: " << mysql_error(conn) << endl;
+        return 1;
+    }
+
+    char ch;
+    int num;
+    intro();
+
+    do {
+        system("cls");
+        cout << "\n\n\n\tMAIN MENU";
+        cout << "\n\n\t01. NEW ACCOUNT";
+        cout << "\n\n\t02. DEPOSIT AMOUNT";
+        cout << "\n\n\t03. WITHDRAW AMOUNT";
+        cout << "\n\n\t04. ALL ACCOUNT HOLDER LIST";
+        cout << "\n\n\t05. MODIFY AN ACCOUNT";
+        cout << "\n\n\t06. CLOSE AN ACCOUNT";
+        cout << "\n\n\t07. EXIT";
+        cout << "\n\n\tSelect Your Option (1-7): ";
+        cin >> ch;
+        system("cls");
+        switch (ch) {
+        case '1':
+            write_account(conn);
+            break;
+        case '2':
+            cout << "\n\n\tEnter The account No. : ";
+            cin >> num;
+            deposit_withdraw(conn, num, 1);
+            break;
+        case '3':
+            cout << "\n\n\tEnter The account No. : ";
+            cin >> num;
+            deposit_withdraw(conn, num, 2);
+            break;
+        case '4':
+            display_all(conn);
+            break;
+        case '5':
+            cout << "\n\n\tEnter The account No. : ";
+            cin >> num;
+            modify_account(conn, num);
+            break;
+        case '6':
+            cout << "\n\n\tEnter The account No. : ";
+            cin >> num;
+            delete_account(conn, num);
+            break;
+        case '7':
+            cout << "\n\n\tThanks for using bank management system";
+            break;
+        default:
+            cout << "\a";
+        }
+        cin.ignore();
+        cin.get();
+    } while (ch != '7');
+
+    mysql_close(conn);
+    return 0;
+}
+
+// Function Definitions
+void write_account(MYSQL* conn) {
+    account ac;
+    ac.create_account();
+    string query = "INSERT INTO Accounts VALUES (" + to_string(ac.retacno()) + ", '" + ac.name + "', '" + ac.rettype() + "', " + to_string(ac.retdeposit()) + ")";
+    if (mysql_query(conn, query.c_str())) {
+        cout << "Query failed: " << mysql_error(conn) << endl;
+    } else {
+        cout << "\nAccount successfully created!" << endl;
+    }
+}
+
+void display_all(MYSQL* conn) {
+    if (mysql_query(conn, "SELECT * FROM Accounts")) {
+        cout << "Query failed: " << mysql_error(conn) << endl;
+        return;
+    }
+
+    MYSQL_RES* res = mysql_store_result(conn);
+    if (!res) {
+        cout << "Failed to retrieve result set: " << mysql_error(conn) << endl;
+        return;
+    }
+
+    cout << "\n\n\t\tACCOUNT HOLDER LIST\n\n";
+    cout << "====================================================\n";
+    cout << "A/c no.      NAME           Type  Balance\n";
+    cout << "====================================================\n";
+
+    MYSQL_ROW row;
+    while ((row = mysql_fetch_row(res))) {
+        cout << setw(8) << row[0] << setw(15) << row[1] << setw(10) << row[2] << setw(10) << row[3] << endl;
+    }
+
+    mysql_free_result(res);
+}
+
+// Define other functions like modify_account, delete_account, and deposit_withdraw similarly.
